@@ -1,0 +1,1074 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no" />
+  <title id="appTitle">Dokumentasi Rapat Yayasan Sindu Jawa Kawedar</title>
+  <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-auth-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-firestore-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-storage-compat.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Roboto&family=Poppins:wght@300;400;600&display=swap" rel="stylesheet">
+  <style>
+    body {
+      max-width: 480px;
+      margin: auto;
+      padding: 1rem;
+      font-family: 'Poppins', sans-serif;
+      background-color: #f8f9fa;
+    }
+    .section { display: none; margin-bottom: 3rem; }
+    .active { display: block; }
+    .fixed-bottom-menu {
+      position: fixed;
+      bottom: 0;
+      left: 0;
+      right: 0;
+      display: flex;
+      justify-content: space-around;
+      background: #ffffff;
+      border-top: none; /* Menghilangkan border atas */
+      z-index: 999;
+    }
+    .fixed-bottom-menu button {
+      flex: 1;
+      padding: 0.8rem;
+      border: none; /* Menghilangkan border pada tombol */
+      background: none; /* Menghilangkan background default tombol */
+      font-weight: bold;
+      font-size: 0.9rem;
+      outline: none; /* Menghilangkan outline saat tombol di-klik (opsional) */
+    }
+    .toolbar {
+      display: flex;
+      gap: 5px;
+      margin-bottom: 5px;
+      flex-wrap: wrap;
+    }
+    .toolbar select, .toolbar input[type="color"] {
+      flex: 1;
+    }
+    #notulenEditor {
+      height: 400px;
+      overflow-y: auto;
+      border: 1px solid #ccc;
+      padding: 1rem;
+    }
+    #absenTable td input {
+      width: 100%;
+    }
+    .hamburger {
+      position: absolute;
+      top: 10px;
+      left: 10px;
+      z-index: 1000;
+    }
+    .history-item {
+      border: 1px solid #ddd;
+      border-radius: 5px;
+      padding: 10px;
+      margin-bottom: 10px;
+      background: white;
+    }
+    .history-date {
+      font-size: 0.8rem;
+      color: #666;
+    }
+    .share-btn {
+      background-color: #25D366;
+      color: white;
+      border: none;
+      border-radius: 5px;
+      padding: 5px 10px;
+      font-size: 0.8rem;
+      margin-top: 5px;
+    }
+    /* Styles for login/register */
+    #authSection {
+      text-align: center;
+      padding-top: 50px;
+    }
+    #authSection input {
+      margin-bottom: 10px;
+    }
+    .main-content {
+        display: none; /* Hidden by default until authenticated */
+    }
+  </style>
+</head>
+<body>
+  <div id="authSection" class="section active">
+    <h4>Selamat Datang di Dokumentasi Rapat!</h4>
+    <div class="mb-3">
+      <input type="email" class="form-control" id="emailInput" placeholder="Email">
+    </div>
+    <div class="mb-3">
+      <input type="password" class="form-control" id="passwordInput" placeholder="Password">
+    </div>
+    <button onclick="signIn()" class="btn btn-primary w-100 mb-2">Masuk</button>
+    <button onclick="signUp()" class="btn btn-secondary w-100">Daftar</button>
+  </div>
+
+  <div class="main-content">
+    <button class="btn btn-light hamburger" onclick="toggleHistoriMenu()">☰</button>
+    <h4 class="text-center">📋 <span id="organizationName">Dokumentasi Rapat Yayasan Sindu Jawa Kawedar</span></h4>
+
+    <div id="historiMenu" class="section">
+      <h5>📚 Menu Utama</h5>
+      <button onclick="tampilkan('notulenSection')" class="btn btn-outline-primary w-100 mb-2">🏠 Home (Notulen)</button> <button onclick="tampilkan('agendaSection')" class="btn btn-outline-primary w-100 mb-2">Buat Agenda</button>
+      <button onclick="tampilkan('undanganSection')" class="btn btn-outline-primary w-100 mb-2">Buat Undangan</button>
+      <button onclick="tampilkan('historiAgenda')" class="btn btn-outline-primary w-100 mb-2">Histori Agenda</button>
+      <button onclick="tampilkan('historiUndangan')" class="btn btn-outline-primary w-100 mb-2">Histori Undangan</button>
+      <button onclick="tampilkan('historiNotulen')" class="btn btn-outline-primary w-100 mb-2">Histori Notulen</button>
+      <button onclick="tampilkan('historiProgres')" class="btn btn-outline-primary w-100 mb-2">Histori Progres</button>
+      <button onclick="tampilkan('historiMedia')" class="btn btn-outline-primary w-100 mb-2">Histori Media</button>
+      <button onclick="tampilkan('settingsSection')" class="btn btn-outline-secondary w-100 mb-2">Pengaturan</button>
+      <button onclick="signOut()" class="btn btn-danger w-100">Keluar</button>
+    </div>
+
+    <div id="undanganSection" class="section">
+      <h5>📩 Buat Undangan Rapat</h5>
+      <div class="mb-3">
+        <label class="form-label">Tanggal Rapat</label>
+        <input type="datetime-local" class="form-control" id="undanganTanggal">
+      </div>
+      <div class="mb-3">
+        <label class="form-label">Tempat</label>
+        <input type="text" class="form-control" id="undanganTempat" placeholder="Masukkan tempat rapat">
+      </div>
+      <div class="mb-3">
+        <label class="form-label">Agenda</label>
+        <input type="text" class="form-control" id="undanganAgenda" placeholder="Masukkan agenda rapat">
+      </div>
+      <div class="mb-3">
+        <label class="form-label">Peserta (pisahkan dengan koma)</label>
+        <textarea class="form-control" id="undanganPeserta" rows="3" placeholder="Masukkan daftar peserta, pisahkan dengan koma"></textarea>
+      </div>
+      <div class="mb-3">
+        <label class="form-label">Catatan Tambahan</label>
+        <textarea class="form-control" id="undanganCatatan" rows="3" placeholder="Masukkan catatan tambahan"></textarea>
+      </div>
+      <button onclick="simpanUndangan()" class="btn btn-primary w-100 mb-2">💾 Simpan Undangan</button>
+      <button onclick="shareUndangan()" class="btn btn-success w-100">📤 Bagikan via WhatsApp</button>
+    </div>
+
+    <div id="agendaSection" class="section">
+      <h5>📅 Buat Agenda Rapat</h5>
+      <div class="mb-3">
+        <label class="form-label">Tanggal Rapat</label>
+        <input type="datetime-local" class="form-control" id="agendaTanggal">
+      </div>
+      <div class="mb-3">
+        <label class="form-label">Judul Agenda</label>
+        <input type="text" class="form-control" id="agendaJudul" placeholder="Masukkan judul agenda">
+      </div>
+      <div class="mb-3">
+        <label class="form-label">Poin-poin Agenda</label>
+        <textarea class="form-control" id="agendaPoin" rows="5" placeholder="Masukkan poin-poin agenda (satu poin per baris)"></textarea>
+      </div>
+      <button onclick="simpanAgenda()" class="btn btn-primary w-100 mb-2">💾 Simpan Agenda</button>
+      <button onclick="shareAgenda()" class="btn btn-success w-1-00">📤 Bagikan via WhatsApp</button>
+    </div>
+
+    <div id="historiAgenda" class="section"><h5>🗂️ Histori Agenda</h5><div id="agendaHistoriList"></div></div>
+    <div id="historiUndangan" class="section"><h5>📂 Histori Undangan</h5><div id="undanganHistoriList"></div></div>
+    <div id="historiNotulen" class="section"><h5>📁 Histori Notulen</h5><div id="notulenHistoriList"></div></div>
+    <div id="historiProgres" class="section"><h5>📈 Histori Progres</h5><div id="progresHistoriList"></div></div>
+    <div id="historiMedia" class="section"><h5>🖼️ Histori Media</h5><div id="mediaHistoriList" class="row row-cols-2 g-2"></div></div>
+
+    <div id="notulenSection" class="section">
+      <h5>📝 Notulen Rapat</h5>
+      <input type="date" class="form-control mb-2" id="notulenTanggal">
+      <div class="toolbar">
+        <select id="fontSelector">
+          <option value="Roboto">Roboto</option>
+          <option value="Poppins">Poppins</option>
+        </select>
+        <input type="color" id="colorPicker" value="#000000">
+        <input type="file" accept="image/*,video/*" id="mediaUpload" onchange="uploadMediaToCloudinary(event)" />
+      </div>
+      <button onclick="startRekam()" class="btn btn-warning w-100 mb-2">🎤 Mulai Rekam</button>
+      <div id="notulenEditor" contenteditable="true" style="font-family: Poppins; color: #000;"></div>
+      <button onclick="saveNotulen()" class="btn btn-primary w-100 mt-2">💾 Simpan Notulen</button>
+      <button onclick="bacaNotulen()" class="btn btn-info w-100 mt-2">🔊 Baca Notulen</button>
+      <button onclick="exportPDF()" class="btn btn-danger w-100 mt-2">📄 Export ke PDF</button>
+    </div>
+
+    <div id="absenSection" class="section">
+      <h5>📌 Daftar Absen</h5>
+      <table class="table" id="absenTable">
+        <tbody></tbody>
+      </table>
+      <button class="btn btn-secondary w-100" onclick="tambahAbsenBaris()">➕ Tambah Baris</button>
+      <button class="btn btn-primary w-100 mt-2" onclick="simpanAbsen()">💾 Simpan Absen</button>
+    </div>
+
+    <div id="mediaSection" class="section">
+      <h5>🖼️ Dokumentasi Media</h5>
+      <input type="file" multiple accept="image/*,video/*" class="form-control mb-2" onchange="uploadMultipleMediaToCloudinary(event)">
+      <div id="mediaList" class="row row-cols-2 g-2"></div>
+    </div>
+
+    <div id="progresSection" class="section">
+      <h5>📊 Progres Hasil Rapat</h5>
+      <input type="date" class="form-control mb-2" id="progresTanggal">
+      <textarea class="form-control mb-2" id="progresIsi" placeholder="Isi progres..." rows="5"></textarea>
+      <button class="btn btn-primary w-100" onclick="simpanProgres()">💾 Simpan Progres</button>
+      <button class="btn btn-success w-100 mt-2" onclick="shareProgres()">📤 Bagikan via WhatsApp</button>
+    </div>
+
+    <div id="settingsSection" class="section">
+      <h5>⚙️ Pengaturan Aplikasi</h5>
+      <div class="mb-3">
+        <label for="organizationNameInput" class="form-label">Nama Organisasi/Yayasan</label>
+        <input type="text" class="form-control" id="organizationNameInput" placeholder="Masukkan nama organisasi/yayasan">
+      </div>
+      <button onclick="saveOrganizationName()" class="btn btn-primary w-100">Simpan Nama</button>
+    </div>
+
+    <div class="fixed-bottom-menu">
+      <button onclick="tampilkan('notulenSection')">Notulen</button>
+      <button onclick="tampilkan('absenSection')">Absen</button>
+      <button onclick="tampilkan('mediaSection')">Media</button>
+      <button onclick="tampilkan('progresSection')">Progres</button>
+    </div>
+  </div> <script>
+    const firebaseConfig = {
+      apiKey: "AIzaSyC_gGSnEHoNS7BZvK3Pjo-r4DkkECOKPws", // Replace with your Firebase API Key
+      authDomain: "app-rapat.firebaseapp.com", // Replace with your Firebase Auth Domain
+      projectId: "app-rapat", // Replace with your Firebase Project ID
+      storageBucket: "app-rapat.firebasestorage.app", // Replace with your Firebase Storage Bucket
+      messagingSenderId: "212710534015", // Replace with your Firebase Messaging Sender ID
+      appId: "1:212710534015:web:b1191991297caa099ec84a" // Replace with your Firebase App ID
+    };
+    firebase.initializeApp(firebaseConfig);
+    const auth = firebase.auth();
+    const db = firebase.firestore();
+    const storage = firebase.storage();
+
+    // Cloudinary configuration
+    const CLOUDINARY_CLOUD_NAME = "dmzgy5fpp";
+    const CLOUDINARY_UPLOAD_PRESET = "App_Rapat_Tius";
+
+    // Global variable for organization name and current user
+    let organizationName = "Yayasan Sindu Jawa Kawedar";
+    let currentUser = null; // Will store the authenticated user object
+
+    // --- Firebase Authentication Functions ---
+    function showMainContent() {
+      document.getElementById('authSection').classList.remove('active');
+      document.querySelector('.main-content').style.display = 'block';
+    }
+
+    function showAuthSection() {
+      document.getElementById('authSection').classList.add('active');
+      document.querySelector('.main-content').style.display = 'none';
+    }
+
+    auth.onAuthStateChanged((user) => {
+      if (user) {
+        currentUser = user;
+        console.log("User logged in:", currentUser.uid);
+        showMainContent();
+        loadOrganizationName(currentUser.uid); // Load organization name for the logged-in user
+        tampilkan('notulenSection'); // Show default section (Notulen) after login
+        document.getElementById('notulenTanggal').valueAsDate = new Date();
+        document.getElementById('undanganTanggal').value = new Date().toISOString().slice(0, 16);
+        document.getElementById('agendaTanggal').value = new Date().toISOString().slice(0, 16);
+        document.getElementById('progresTanggal').valueAsDate = new Date();
+        loadHistoriData(); // Load history data specific to the user
+      } else {
+        currentUser = null;
+        console.log("User logged out.");
+        showAuthSection();
+        // Reset organization name to default if no user is logged in
+        organizationName = "Yayasan Sindu Jawa Kawedar";
+        updateOrganizationNameDisplay();
+      }
+    });
+
+    async function signIn() {
+      const email = document.getElementById('emailInput').value;
+      const password = document.getElementById('passwordInput').value;
+
+      try {
+        await auth.signInWithEmailAndPassword(email, password);
+        alert("Berhasil masuk!");
+      } catch (error) {
+        alert("Gagal masuk: " + error.message);
+        console.error("Login error:", error);
+      }
+    }
+
+    async function signUp() {
+      const email = document.getElementById('emailInput').value;
+      const password = document.getElementById('passwordInput').value;
+
+      try {
+        const userCredential = await auth.createUserWithEmailAndPassword(email, password);
+        alert("Pendaftaran berhasil! Anda sudah masuk.");
+        // Set default organization name for new user
+        saveOrganizationName("Yayasan Sindu Jawa Kawedar", userCredential.user.uid); // Use userCredential.user.uid
+      } catch (error) {
+        alert("Gagal mendaftar: " + error.message);
+        console.error("Sign up error:", error);
+      }
+    }
+
+    function signOut() {
+      auth.signOut().then(() => {
+        alert("Berhasil keluar.");
+      }).catch((error) => {
+        alert("Gagal keluar: " + error.message);
+        console.error("Sign out error:", error);
+      });
+    }
+
+    // --- UI Display Functions ---
+    function tampilkan(id) {
+      document.querySelectorAll('.section').forEach(s => s.classList.remove('active'));
+      document.getElementById(id).classList.add('active');
+      if (id === 'settingsSection' && currentUser) {
+        document.getElementById('organizationNameInput').value = organizationName;
+      }
+    }
+
+    function toggleHistoriMenu() {
+      tampilkan('historiMenu');
+    }
+
+    // --- Dynamic Organization Name Functions ---
+    function loadOrganizationName(userId) {
+      if (!userId) return; // Ensure userId exists
+      db.collection("settings").doc(userId).get().then(doc => {
+        if (doc.exists && doc.data().name) {
+          organizationName = doc.data().name;
+        } else {
+          // If no specific name found for this user, use default and save it
+          organizationName = "Yayasan Sindu Jawa Kawedar";
+          // Only save if it's a new user or explicitly default
+          // To avoid infinite loops, this save is now only called from signUp
+          // or if manually triggered.
+          // For existing users without a setting, it will just display the default.
+          // If you want to force save default on first login, uncomment:
+          // saveOrganizationName(organizationName, userId);
+        }
+        updateOrganizationNameDisplay();
+      }).catch(error => {
+        console.error("Error loading organization name:", error);
+        updateOrganizationNameDisplay(); // Still update even on error to use default
+      });
+    }
+
+    function saveOrganizationName(nameToSave = null, userId = currentUser?.uid) {
+      if (!userId) {
+        alert("Harap masuk terlebih dahulu.");
+        return;
+      }
+      const newName = nameToSave || document.getElementById("organizationNameInput").value.trim();
+      if (newName) {
+        db.collection("settings").doc(userId).set({ name: newName }, { merge: true }) // Use merge: true to avoid overwriting other fields
+          .then(() => {
+            organizationName = newName;
+            updateOrganizationNameDisplay();
+            alert("Nama organisasi berhasil diubah!");
+            tampilkan('historiMenu'); // Go back to menu after saving
+          })
+          .catch(error => {
+            console.error("Error saving organization name:", error);
+            alert("Gagal menyimpan nama organisasi. Pastikan aturan keamanan Firebase Firestore Anda mengizinkan penulisan.");
+          });
+      } else {
+        alert("Nama organisasi tidak boleh kosong.");
+      }
+    }
+
+
+    function updateOrganizationNameDisplay() {
+      document.getElementById("organizationName").innerText = organizationName;
+      document.getElementById("appTitle").innerText = `Dokumentasi Rapat ${organizationName}`;
+    }
+
+    // --- Speech Recognition and Synthesis ---
+    function startRekam() {
+      const recognition = new (window.SpeechRecognition || window.webkitSpeechRecognition)();
+      recognition.lang = 'id-ID';
+      recognition.onresult = e => {
+        document.getElementById("notulenEditor").innerHTML += e.results[0][0].transcript + " ";
+      };
+      recognition.start();
+    }
+
+    function bacaNotulen() {
+      const teks = document.getElementById("notulenEditor").innerText;
+      const synth = window.speechSynthesis;
+      const utter = new SpeechSynthesisUtterance(teks);
+      utter.lang = 'id-ID';
+      synth.speak(utter);
+    }
+
+    function exportPDF() {
+      const { jsPDF } = window.jspdf;
+      const doc = new jsPDF();
+      doc.text(document.getElementById("notulenEditor").innerText, 10, 10);
+      doc.save("Notulen-Rapat.pdf");
+    }
+
+    document.getElementById("fontSelector").onchange = function () {
+      document.getElementById("notulenEditor").style.fontFamily = this.value;
+    }
+    document.getElementById("colorPicker").onchange = function () {
+      document.getElementById("notulenEditor").style.color = this.value;
+    }
+
+    // --- Absen Functions ---
+    function tambahAbsenBaris() {
+      const tbody = document.querySelector("#absenTable tbody");
+      const tr = document.createElement("tr");
+      tr.innerHTML = `<td><input type="text" placeholder="Nama"></td><td><input type="text" placeholder="Jabatan"></td>`;
+      tbody.appendChild(tr);
+    }
+
+    for (let i = 0; i < 7; i++) tambahAbsenBaris();
+
+    function simpanAbsen() {
+      if (!currentUser) {
+        alert("Harap masuk terlebih dahulu untuk menyimpan absen.");
+        return;
+      }
+      const data = [];
+      document.querySelectorAll("#absenTable tbody tr").forEach(row => {
+        const nama = row.children[0].children[0].value;
+        const jabatan = row.children[1].children[0].value;
+        if (nama) data.push({ nama, jabatan });
+      });
+      db.collection("absen").add({ data, waktu: new Date(), userId: currentUser.uid })
+        .then(() => {
+            alert("Absen disimpan!");
+        })
+        .catch(error => {
+            console.error("Error saving absen:", error);
+            alert("Gagal menyimpan absen. Pastikan aturan keamanan Firebase Firestore Anda mengizinkan penulisan.");
+        });
+    }
+
+    // --- Notulen Functions ---
+    function saveNotulen() {
+      if (!currentUser) {
+        alert("Harap masuk terlebih dahulu untuk menyimpan notulen.");
+        return;
+      }
+      const isi = document.getElementById("notulenEditor").innerHTML;
+      const tanggal = document.getElementById("notulenTanggal").value;
+      db.collection("notulen").add({ isi, tanggal, waktu: new Date(), userId: currentUser.uid })
+        .then(() => {
+          alert("Notulen disimpan!");
+          loadNotulenHistori();
+        })
+        .catch(error => {
+          console.error("Error saving notulen:", error);
+          alert("Gagal menyimpan notulen. Pastikan aturan keamanan Firebase Firestore Anda mengizinkan penulisan.");
+        });
+    }
+
+    // --- Cloudinary Integration for Media Uploads ---
+    async function uploadMediaToCloudinary(event) {
+      if (!currentUser) {
+        alert("Harap masuk terlebih dahulu untuk mengunggah media.");
+        return;
+      }
+      const file = event.target.files[0];
+      if (!file) return;
+
+      const formData = new FormData();
+      formData.append('file', file);
+      formData.append('upload_preset', CLOUDINARY_UPLOAD_PRESET);
+
+      try {
+        const response = await fetch(`https://api.cloudinary.com/v1_1/${CLOUDINARY_CLOUD_NAME}/${file.type.startsWith('image') ? 'image' : 'video'}/upload`, {
+          method: 'POST',
+          body: formData
+        });
+        const data = await response.json();
+
+        if (data.secure_url) {
+          const mediaUrl = data.secure_url;
+          // Insert media into notulen editor
+          if (file.type.startsWith('image')) {
+            const img = document.createElement("img");
+            img.src = mediaUrl;
+            img.style.maxWidth = "100%";
+            document.getElementById("notulenEditor").appendChild(img);
+          } else if (file.type.startsWith('video')) {
+            const video = document.createElement("video");
+            video.src = mediaUrl;
+            video.controls = true;
+            video.style.maxWidth = "100%";
+            document.getElementById("notulenEditor").appendChild(video);
+          }
+          // Save media reference to Firebase for history
+          db.collection("media").add({
+            url: mediaUrl,
+            type: file.type.startsWith('image') ? 'image' : 'video',
+            filename: file.name,
+            waktu: new Date(),
+            userId: currentUser.uid
+          }).then(() => {
+            console.log("Media reference saved to Firebase.");
+            loadMediaHistori();
+          })
+          .catch(error => {
+              console.error("Error saving media reference:", error);
+              alert("Gagal menyimpan referensi media. Pastikan aturan keamanan Firebase Firestore Anda mengizinkan penulisan.");
+          });
+        } else {
+          alert("Gagal mengunggah media ke Cloudinary.");
+          console.error("Cloudinary upload failed:", data);
+        }
+      } catch (error) {
+        console.error("Error uploading media:", error);
+        alert("Terjadi kesalahan saat mengunggah media.");
+      }
+    }
+
+    async function uploadMultipleMediaToCloudinary(event) {
+      if (!currentUser) {
+        alert("Harap masuk terlebih dahulu untuk mengunggah media.");
+        return;
+      }
+      const files = Array.from(event.target.files);
+      const mediaList = document.getElementById("mediaList");
+      mediaList.innerHTML = ""; // Clear existing media
+
+      for (const file of files) {
+        const formData = new FormData();
+        formData.append('file', file);
+        formData.append('upload_preset', CLOUDINARY_UPLOAD_PRESET);
+
+        try {
+          const response = await fetch(`https://api.cloudinary.com/v1_1/${CLOUDINARY_CLOUD_NAME}/${file.type.startsWith('image') ? 'image' : 'video'}/upload`, {
+            method: 'POST',
+            body: formData
+          });
+          const data = await response.json();
+
+          if (data.secure_url) {
+            const mediaUrl = data.secure_url;
+            const col = document.createElement("div");
+            col.className = "col";
+            if (file.type.startsWith('image')) {
+              col.innerHTML = `
+                <div class="history-item">
+                  <img src="${mediaUrl}" class="img-fluid rounded">
+                  <div class="history-date">Diunggah: ${new Date().toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric', hour: '2-digit', minute: '2-digit' })}</div>
+                </div>
+              `;
+            } else if (file.type.startsWith('video')) {
+              col.innerHTML = `
+                <div class="history-item">
+                  <video src="${mediaUrl}" controls class="img-fluid rounded"></video>
+                  <div class="history-date">Diunggah: ${new Date().toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric', hour: '2-digit', minute: '2-digit' })}</div>
+                </div>
+              `;
+            }
+            mediaList.appendChild(col);
+
+            // Save media reference to Firebase for history
+            db.collection("media").add({
+              url: mediaUrl,
+              type: file.type.startsWith('image') ? 'image' : 'video',
+              filename: file.name,
+              waktu: new Date(),
+              userId: currentUser.uid
+            }).then(() => {
+              console.log("Media reference saved to Firebase.");
+              loadMediaHistori();
+            })
+            .catch(error => {
+                console.error("Error saving media reference:", error);
+                alert("Gagal menyimpan referensi media. Pastikan aturan keamanan Firebase Firestore Anda mengizinkan penulisan.");
+            });
+          } else {
+            console.error("Cloudinary upload failed for a file:", data);
+          }
+        } catch (error) {
+          console.error("Error uploading a file:", error);
+        }
+      }
+    }
+
+    // Undangan functions
+    function simpanUndangan() {
+      if (!currentUser) {
+        alert("Harap masuk terlebih dahulu untuk menyimpan undangan.");
+        return;
+      }
+      const tanggal = document.getElementById("undanganTanggal").value;
+      const tempat = document.getElementById("undanganTempat").value;
+      const agenda = document.getElementById("undanganAgenda").value;
+      const peserta = document.getElementById("undanganPeserta").value;
+      const catatan = document.getElementById("undanganCatatan").value;
+
+      if (!tanggal || !tempat || !agenda) {
+        alert("Harap isi tanggal, tempat, dan agenda undangan!");
+        return;
+      }
+
+      db.collection("undangan").add({
+        tanggal,
+        tempat,
+        agenda,
+        peserta,
+        catatan,
+        waktu: new Date(),
+        userId: currentUser.uid
+      }).then(() => {
+        alert("Undangan berhasil disimpan!");
+        loadUndanganHistori();
+      }).catch(error => {
+        console.error("Error saving invitation:", error);
+        alert("Gagal menyimpan undangan. Pastikan aturan keamanan Firebase Firestore Anda mengizinkan penulisan.");
+      });
+    }
+
+    function shareUndangan() {
+      const tanggal = document.getElementById("undanganTanggal").value;
+      const tempat = document = document.getElementById("undanganTempat").value;
+      const agenda = document.getElementById("undanganAgenda").value;
+      const peserta = document.getElementById("undanganPeserta").value;
+      const catatan = document.getElementById("undanganCatatan").value;
+
+      if (!tanggal || !tempat || !agenda) {
+        alert("Harap isi tanggal, tempat, dan agenda undangan sebelum dibagikan!");
+        return;
+      }
+
+      const dateObj = new Date(tanggal);
+      const formattedDate = dateObj.toLocaleDateString('id-ID', {
+        weekday: 'long',
+        day: 'numeric',
+        month: 'long',
+        year: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit'
+      });
+
+      let message = `*Undangan Rapat ${organizationName}*\n\n`;
+      message += `📅 *Tanggal*: ${formattedDate}\n`;
+      message += `📍 *Tempat*: ${tempat}\n`;
+      message += `📝 *Agenda*: ${agenda}\n`;
+      if (peserta) message += `👥 *Peserta*: ${peserta}\n`;
+      if (catatan) message += `📌 *Catatan*: ${catatan}\n\n`;
+      message += `_*Harap konfirmasi kehadiran Anda_`;
+
+      const encodedMessage = encodeURIComponent(message);
+      window.open(`https://wa.me/?text=${encodedMessage}`, '_blank');
+    }
+
+    // Agenda functions
+    function simpanAgenda() {
+      if (!currentUser) {
+        alert("Harap masuk terlebih dahulu untuk menyimpan agenda.");
+        return;
+      }
+      const tanggal = document.getElementById("agendaTanggal").value;
+      const judul = document.getElementById("agendaJudul").value;
+      const poin = document.getElementById("agendaPoin").value;
+
+      if (!tanggal || !judul || !poin) {
+        alert("Harap isi semua field agenda!");
+        return;
+      }
+
+      db.collection("agenda").add({
+        tanggal,
+        judul,
+        poin,
+        waktu: new Date(),
+        userId: currentUser.uid
+      }).then(() => {
+        alert("Agenda berhasil disimpan!");
+        loadAgendaHistori();
+      }).catch(error => {
+        console.error("Error saving agenda:", error);
+        alert("Gagal menyimpan agenda. Pastikan aturan keamanan Firebase Firestore Anda mengizinkan penulisan.");
+      });
+    }
+
+    function shareAgenda() {
+      const tanggal = document.getElementById("agendaTanggal").value;
+      const judul = document.getElementById("agendaJudul").value;
+      const poin = document.getElementById("agendaPoin").value;
+
+      if (!tanggal || !judul || !poin) {
+        alert("Harap isi semua field agenda sebelum dibagikan!");
+        return;
+      }
+
+      const dateObj = new Date(tanggal);
+      const formattedDate = dateObj.toLocaleDateString('id-ID', {
+        weekday: 'long',
+        day: 'numeric',
+        month: 'long',
+        year: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit'
+      });
+
+      let message = `*Agenda Rapat ${organizationName}*\n\n`;
+      message += `📅 *Tanggal*: ${formattedDate}\n`;
+      message += `📌 *Judul*: ${judul}\n\n`;
+      message += `*Poin-poin Agenda*:\n${poin.split('\n').map(p => `• ${p.trim()}`).join('\n')}\n\n`;
+      message += `_*Mari kita persiapkan dengan baik_`;
+
+      const encodedMessage = encodeURIComponent(message);
+      window.open(`https://wa.me/?text=${encodedMessage}`, '_blank');
+    }
+
+    // Progres functions
+    function simpanProgres() {
+      if (!currentUser) {
+        alert("Harap masuk terlebih dahulu untuk menyimpan progres.");
+        return;
+      }
+      const tanggal = document.getElementById("progresTanggal").value;
+      const isi = document.getElementById("progresIsi").value;
+
+      if (!tanggal || !isi) {
+        alert("Harap isi tanggal dan isi progres!");
+        return;
+      }
+
+      db.collection("progres").add({
+        tanggal,
+        isi,
+        waktu: new Date(),
+        userId: currentUser.uid
+      }).then(() => {
+        alert("Progres berhasil disimpan!");
+        loadProgresHistori();
+      }).catch(error => {
+        console.error("Error saving progress:", error);
+        alert("Gagal menyimpan progres. Pastikan aturan keamanan Firebase Firestore Anda mengizinkan penulisan.");
+      });
+    }
+
+    function shareProgres() {
+      const tanggal = document.getElementById("progresTanggal").value;
+      const isi = document.getElementById("progresIsi").value;
+
+      if (!tanggal || !isi) {
+        alert("Harap isi tanggal dan isi progres sebelum dibagikan!");
+        return;
+      }
+
+      const dateObj = new Date(tanggal);
+      const formattedDate = dateObj.toLocaleDateString('id-ID', {
+        weekday: 'long',
+        day: 'numeric',
+        month: 'long',
+        year: 'numeric'
+      });
+
+      let message = `*Update Progres Rapat ${organizationName}*\n\n`;
+      message += `📅 *Tanggal*: ${formattedDate}\n\n`;
+      message += `*Progres*:\n${isi}\n\n`;
+      message += `_*Mari kita terus pantau perkembangan ini_`;
+
+      const encodedMessage = encodeURIComponent(message);
+      window.open(`https://wa.me/?text=${encodedMessage}`, '_blank');
+    }
+
+    // History loading functions
+    function loadHistoriData() {
+      if (currentUser) {
+        loadAgendaHistori();
+        loadUndanganHistori();
+        loadNotulenHistori();
+        loadProgresHistori();
+        loadMediaHistori();
+      } else {
+        // Clear history lists if no user is logged in
+        document.getElementById("agendaHistoriList").innerHTML = "";
+        document.getElementById("undanganHistoriList").innerHTML = "";
+        document.getElementById("notulenHistoriList").innerHTML = "";
+        document.getElementById("progresHistoriList").innerHTML = "";
+        document.getElementById("mediaHistoriList").innerHTML = "";
+      }
+    }
+
+    function loadAgendaHistori() {
+      if (!currentUser) return;
+      db.collection("agenda").where("userId", "==", currentUser.uid).orderBy("waktu", "desc").get().then(querySnapshot => {
+        const container = document.getElementById("agendaHistoriList");
+        container.innerHTML = "";
+
+        querySnapshot.forEach(doc => {
+          const data = doc.data();
+          const date = new Date(data.waktu.seconds * 1000);
+          const formattedDate = date.toLocaleDateString('id-ID', {
+            day: 'numeric',
+            month: 'long',
+            year: 'numeric',
+            hour: '2-digit',
+            minute: '2-digit'
+          });
+
+          const agendaDate = new Date(data.tanggal);
+          const formattedAgendaDate = agendaDate.toLocaleDateString('id-ID', {
+            weekday: 'long',
+            day: 'numeric',
+            month: 'long',
+            year: 'numeric',
+            hour: '2-digit',
+            minute: '2-digit'
+          });
+
+          const item = document.createElement("div");
+          item.className = "history-item";
+          item.innerHTML = `
+            <h6>${data.judul}</h6>
+            <div class="history-date">${formattedAgendaDate}</div>
+            <p>${data.poin.split('\n').map(p => `• ${p.trim()}`).join('<br>')}</p>
+            <div class="history-date">Disimpan: ${formattedDate}</div>
+            <button class="share-btn w-100" onclick="shareHistoryItem('agenda', '${data.judul}', '${formattedAgendaDate}', '${data.poin.replace(/\n/g, '\\n')}')">
+              📤 Bagikan via WhatsApp
+            </button>
+          `;
+          container.appendChild(item);
+        });
+      }).catch(error => {
+        console.error("Error loading agenda history:", error);
+      });
+    }
+
+    function loadUndanganHistori() {
+      if (!currentUser) return;
+      db.collection("undangan").where("userId", "==", currentUser.uid).orderBy("waktu", "desc").get().then(querySnapshot => {
+        const container = document.getElementById("undanganHistoriList");
+        container.innerHTML = "";
+
+        querySnapshot.forEach(doc => {
+          const data = doc.data();
+          const date = new Date(data.waktu.seconds * 1000);
+          const formattedDate = date.toLocaleDateString('id-ID', {
+            day: 'numeric',
+            month: 'long',
+            year: 'numeric',
+            hour: '2-digit',
+            minute: '2-digit'
+          });
+
+          const undanganDate = new Date(data.tanggal);
+          const formattedUndanganDate = undanganDate.toLocaleDateString('id-ID', {
+            weekday: 'long',
+            day: 'numeric',
+            month: 'long',
+            year: 'numeric',
+            hour: '2-digit',
+            minute: '2-digit'
+          });
+
+          const item = document.createElement("div");
+          item.className = "history-item";
+          item.innerHTML = `
+            <h6>${data.agenda}</h6>
+            <div class="history-date">${formattedUndanganDate}</div>
+            <p><strong>Tempat:</strong> ${data.tempat}</p>
+            ${data.peserta ? `<p><strong>Peserta:</strong> ${data.peserta}</p>` : ''}
+            ${data.catatan ? `<p><strong>Catatan:</strong> ${data.catatan}</p>` : ''}
+            <div class="history-date">Disimpan: ${formattedDate}</div>
+            <button class="share-btn w-100" onclick="shareHistoryItem('undangan', '${data.agenda}', '${formattedUndanganDate}', '${data.tempat}', '${data.peserta ? data.peserta.replace(/\n/g, '\\n') : ''}', '${data.catatan ? data.catatan.replace(/\n/g, '\\n') : ''}')">
+              📤 Bagikan via WhatsApp
+            </button>
+          `;
+          container.appendChild(item);
+        });
+      }).catch(error => {
+        console.error("Error loading invitation history:", error);
+      });
+    }
+
+    function loadNotulenHistori() {
+      if (!currentUser) return;
+      db.collection("notulen").where("userId", "==", currentUser.uid).orderBy("waktu", "desc").get().then(querySnapshot => {
+        const container = document.getElementById("notulenHistoriList");
+        container.innerHTML = "";
+
+        querySnapshot.forEach(doc => {
+          const data = doc.data();
+          const date = new Date(data.waktu.seconds * 1000);
+          const formattedDate = date.toLocaleDateString('id-ID', {
+            day: 'numeric',
+            month: 'long',
+            year: 'numeric',
+            hour: '2-digit',
+            minute: '2-digit'
+          });
+
+          const notulenDate = data.tanggal ? new Date(data.tanggal).toLocaleDateString('id-ID', {
+            day: 'numeric',
+            month: 'long',
+            year: 'numeric'
+          }) : 'Tanpa tanggal';
+
+          const item = document.createElement("div");
+          item.className = "history-item";
+          item.innerHTML = `
+            <h6>Notulen Rapat</h6>
+            <div class="history-date">${notulenDate}</div>
+            <p>${data.isi.substring(0, 100)}...</p>
+            <div class="history-date">Disimpan: ${formattedDate}</div>
+            <button class="share-btn w-100" onclick="shareHistoryItem('notulen', '${notulenDate}', '${data.isi.replace(/\n/g, '\\n').substring(0, 200)}...')">
+              📤 Bagikan via WhatsApp
+            </button>
+          `;
+          container.appendChild(item);
+        });
+      }).catch(error => {
+        console.error("Error loading notulen history:", error);
+      });
+    }
+
+    function loadProgresHistori() {
+      if (!currentUser) return;
+      db.collection("progres").where("userId", "==", currentUser.uid).orderBy("waktu", "desc").get().then(querySnapshot => {
+        const container = document.getElementById("progresHistoriList");
+        container.innerHTML = "";
+
+        querySnapshot.forEach(doc => {
+          const data = doc.data();
+          const date = new Date(data.waktu.seconds * 1000);
+          const formattedDate = date.toLocaleDateString('id-ID', {
+            day: 'numeric',
+            month: 'long',
+            year: 'numeric',
+            hour: '2-digit',
+            minute: '2-digit'
+          });
+
+          const progresDate = new Date(data.tanggal).toLocaleDateString('id-ID', {
+            day: 'numeric',
+            month: 'long',
+            year: 'numeric'
+          });
+
+          const item = document.createElement("div");
+          item.className = "history-item";
+          item.innerHTML = `
+            <h6>Update Progres</h6>
+            <div class="history-date">${progresDate}</div>
+            <p>${data.isi.substring(0, 100)}...</p>
+            <div class="history-date">Disimpan: ${formattedDate}</div>
+            <button class="share-btn w-100" onclick="shareHistoryItem('progres', '${progresDate}', '${data.isi.replace(/\n/g, '\\n').substring(0, 200)}...')">
+              📤 Bagikan via WhatsApp
+            </button>
+          `;
+          container.appendChild(item);
+        });
+      }).catch(error => {
+        console.error("Error loading progress history:", error);
+      });
+    }
+
+    function loadMediaHistori() {
+      if (!currentUser) return;
+      db.collection("media").where("userId", "==", currentUser.uid).orderBy("waktu", "desc").get().then(querySnapshot => {
+        const container = document.getElementById("mediaHistoriList");
+        container.innerHTML = "";
+
+        querySnapshot.forEach(doc => {
+          const data = doc.data();
+          const date = new Date(data.waktu.seconds * 1000);
+          const formattedDate = date.toLocaleDateString('id-ID', {
+            day: 'numeric',
+            month: 'long',
+            year: 'numeric',
+            hour: '2-digit',
+            minute: '2-digit'
+          });
+
+          const item = document.createElement("div");
+          item.className = "col"; // Use col for grid layout
+          if (data.type === 'image') {
+            item.innerHTML = `
+              <div class="history-item">
+                <h6>Gambar: ${data.filename}</h6>
+                <img src="${data.url}" class="img-fluid rounded mt-2 mb-2">
+                <div class="history-date">Diunggah: ${formattedDate}</div>
+                <button class="share-btn w-100" onclick="shareHistoryItem('media', 'Gambar', '${data.filename}', '${data.url}')">
+                  📤 Bagikan via WhatsApp
+                </button>
+              </div>
+            `;
+          } else if (data.type === 'video') {
+            item.innerHTML = `
+              <div class="history-item">
+                <h6>Video: ${data.filename}</h6>
+                <video src="${data.url}" controls class="img-fluid rounded mt-2 mb-2"></video>
+                <div class="history-date">Diunggah: ${formattedDate}</div>
+                <button class="share-btn w-100" onclick="shareHistoryItem('media', 'Video', '${data.filename}', '${data.url}')">
+                  📤 Bagikan via WhatsApp
+                </button>
+              </div>
+            `;
+          }
+          container.appendChild(item);
+        });
+      }).catch(error => {
+        console.error("Error loading media history:", error);
+      });
+    }
+
+
+    function shareHistoryItem(type, ...args) {
+      let message = '';
+
+      if (type === 'agenda') {
+        const [judul, tanggal, poin] = args;
+        message = `*Agenda Rapat ${organizationName}*\n\n`;
+        message += `📅 *Tanggal*: ${tanggal}\n`;
+        message += `📌 *Judul*: ${judul}\n\n`;
+        message += `*Poin-poin Agenda*:\n${poin.replace(/\\n/g, '\n')}\n\n`;
+        message += `_*Mari kita persiapkan dengan baik_`;
+      }
+      else if (type === 'undangan') {
+        const [agenda, tanggal, tempat, peserta, catatan] = args;
+        message = `*Undangan Rapat ${organizationName}*\n\n`;
+        message += `📅 *Tanggal*: ${tanggal}\n`;
+        message += `📍 *Tempat*: ${tempat}\n`;
+        message += `📝 *Agenda*: ${agenda}\n`;
+        if (peserta) message += `👥 *Peserta*: ${peserta.replace(/\\n/g, '\n')}\n`;
+        if (catatan) message += `📌 *Catatan*: ${catatan.replace(/\\n/g, '\n')}\n\n`;
+        message += `_*Harap konfirmasi kehadiran Anda_`;
+      }
+      else if (type === 'notulen') {
+        const [tanggal, isi] = args;
+        message = `*Notulen Rapat ${organizationName}*\n\n`;
+        message += `📅 *Tanggal*: ${tanggal}\n\n`;
+        message += `*Isi Notulen*:\n${isi.replace(/\\n/g, '\n')}\n\n`;
+        message += `_*Untuk informasi lebih lengkap, silakan buka aplikasi_`;
+      }
+      else if (type === 'progres') {
+        const [tanggal, isi] = args;
+        message = `*Update Progres Rapat ${organizationName}*\n\n`;
+        message += `📅 *Tanggal*: ${tanggal}\n\n`;
+        message += `*Progres*:\n${isi}\n\n`;
+        message += `_*Mari kita terus pantau perkembangan ini_`;
+      }
+      else if (type === 'media') {
+        const [mediaType, filename, url] = args;
+        message = `*Dokumentasi ${mediaType} Rapat ${organizationName}*\n\n`;
+        message += `Nama File: ${filename}\n`;
+        message += `Lihat di: ${url}\n\n`;
+        message += `_*Tersedia di aplikasi dokumentasi rapat_`;
+      }
+
+      const encodedMessage = encodeURIComponent(message);
+      window.open(`https://wa.me/?text=${encodedMessage}`, '_blank');
+    }
+  </script>
+</body>
+</html>
